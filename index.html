@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <script src="NeuralNetwork.js"></script>
+  <title>Sad Or Happy?</title>
+</head>
+<body>
+  <div id="wrapper">
+    <canvas width="400" height="400" id="paintField"></canvas>
+    <div id="controls">
+      <button class="control" id="happy"></button>
+      <button class="control" id="sad"></button>
+      <button class="control" id="clear">
+        Clear
+      </button>
+      <button class="control" id="train">
+        Train
+      </button>
+      <button class="control" disabled id="predict">
+        Predict
+      </button>
+    </div>
+  </div>
+</body>
+
+<style>
+    #wrapper {
+        width: 400px;
+        margin: 0 auto;
+    }
+
+    #paintField {
+        height: 400px;
+        width: 100%;
+        border: 1px solid black;
+    }
+
+    #controls {
+        display: grid;
+        grid-gap: 10px;
+        grid-template-columns: 1fr 1fr;
+        margin-top: 30px;
+    }
+
+    #clear, #train, #predict {
+        grid-column: 1 / -1;
+    }
+
+    .control {
+        font-size: 20px;
+        padding: 4px;
+        cursor: pointer;
+    }
+</style>
+
+<script>
+  const canvas = document.querySelector('#paintField');
+  const clearBtn = document.querySelector('#clear');
+  const sadBtn = document.querySelector('#sad');
+  const happyBtn = document.querySelector('#happy');
+  const trainBtn = document.querySelector('#train');
+  const predictBtn = document.querySelector('#predict');
+  const ctx = canvas.getContext('2d');
+  const paintField = new Array(100);
+  const trainData = [];
+  const NN = new Network(100, 2);
+  let mouseDown = false;
+  let happyCount = 0;
+  let sadCount = 0;
+
+  NN.learningRate = 0.8;
+
+  function drawGrid() {
+    ctx.strokeStyle = '#CCC'
+
+    for (let i = 1; i < 10; i++) {
+      ctx.moveTo(0, i * 40);
+      ctx.lineTo(400, i * 40);
+      ctx.moveTo(i * 40, 0);
+      ctx.lineTo(i * 40, 400);
+    }
+
+    ctx.stroke();
+  }
+
+  function clearCanvas() {
+    ctx.fillStyle = '#FFF';
+    ctx.fillRect(0, 0, 400, 400);
+    drawGrid();
+  }
+
+  function drawSquare(row, column, color) {
+    ctx.fillStyle = color;
+    ctx.fillRect(column * 40 + 1, row * 40 + 1, 38, 38);
+  }
+
+  function draw(event) {
+    const rowIndex = Math.floor(event.offsetY / 40);
+    const columnIndex = Math.floor(event.offsetX / 40);
+    const arrayIndex = rowIndex * 10 + columnIndex;
+    paintField[arrayIndex] = 1;
+    const color = paintField[arrayIndex] ? 'green' : 'white';
+    drawSquare(rowIndex, columnIndex, color);
+  }
+
+  function clearField() {
+    paintField.fill(false);
+    clearCanvas(ctx)
+  }
+
+  function updateInterface() {
+    happyBtn.innerText = `=) ${happyCount}`;
+    sadBtn.innerText = `=( ${sadCount}`;
+  }
+
+  function storeResult(value) {
+    trainData.push([[...paintField], value]);
+    updateInterface()
+  }
+
+  document.addEventListener('mousedown', (e) => {
+    mouseDown = true;
+  });
+
+  document.addEventListener('mouseup', (e) => {
+    mouseDown = false;
+  });
+
+  canvas.addEventListener('mousemove', (e) => {
+    if (!mouseDown) {
+      return;
+    }
+    draw(e);
+  });
+
+  clearBtn.addEventListener('click', () => {
+    clearField();
+  });
+
+  happyBtn.addEventListener('click', () => {
+    happyCount += 1;
+    storeResult([1, 0]);
+    clearField();
+  });
+
+  sadBtn.addEventListener('click', () => {
+    sadCount += 1;
+    storeResult([0, 1]);
+    clearField();
+  });
+
+  predictBtn.addEventListener('click', () => {
+    NN.input = [...paintField];
+    const [happiness, sadness] = NN.prediction;
+    alert(`I think it's a ${happiness > sadness ? 'happy' : 'sad'} face!\nHappiness: ${Math.round(happiness * 100)}% Sadness: ${Math.round(sadness * 100)}%`);
+  });
+
+  trainBtn.addEventListener('click', () => {
+    NN.train(trainData, 1000).then(() => {
+      predictBtn.disabled = false;
+      alert('Trained!');
+    })
+  });
+
+  clearField();
+  updateInterface();
+</script>
+</html>
